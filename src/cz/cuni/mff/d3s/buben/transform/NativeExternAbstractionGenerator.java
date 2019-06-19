@@ -145,10 +145,12 @@ public class NativeExternAbstractionGenerator
 			String fullMthName = curClassName + "." + mthName;
 
 			// we do not replace any statements in library methods
-			if ( ! Configuration.isApplicationMethod(fullMthName) ) return mv;
+			// still we must remove the bytecode instructions JSR and RET
+			if ( ! Configuration.isApplicationMethod(fullMthName) ) return new JumpAbstractionMV(mv);
 
 			// we also do not replace any statements in methods that access external entities
-			if ( Configuration.isExternalAccessMethod(fullMthName) ) return mv;
+			// still we must remove the bytecode instructions JSR and RET
+			if ( Configuration.isExternalAccessMethod(fullMthName) ) return new JumpAbstractionMV(mv);
 
 			String mthSig = curClassName + "." + mthName + mthDesc;
 	
