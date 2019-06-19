@@ -1,0 +1,8 @@
+target=net.javacoding.jspider.JSpiderTool
+target.args=download,http://d3s.mff.cuni.cz/~parizek,index.html
+
+jpf-core.peer_packages+=,cz.cuni.mff.d3s.buben.jpf.vm
+
+listener=gov.nasa.jpf.listener.PreciseRaceDetector
+race.exclude=gov.nasa.jpf.*
+

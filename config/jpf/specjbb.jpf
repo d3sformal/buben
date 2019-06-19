@@ -1,0 +1,8 @@
+target=spec.jbb.JBBmain
+target.args=-propfile,benchmarks/specjbb/dat/SPECjbb.props
+
+jpf-core.peer_packages+=,cz.cuni.mff.d3s.buben.jpf.vm
+
+listener=gov.nasa.jpf.listener.PreciseRaceDetector
+race.exclude=gov.nasa.jpf.*
+

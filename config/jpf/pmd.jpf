@@ -1,0 +1,8 @@
+target=net.sourceforge.pmd.PMD
+target.args=benchmarks/pmd/dat/net/sourceforge/pmd/ast/Token.java,xml,benchmarks/pmd/dat/rulesets/basic.xml,benchmarks/pmd/dat/rulesets/braces.xml,benchmarks/pmd/dat/rulesets/imports.xml,-debug
+
+jpf-core.peer_packages+=,cz.cuni.mff.d3s.buben.jpf.vm
+
+listener=gov.nasa.jpf.listener.PreciseRaceDetector
+race.exclude=gov.nasa.jpf.*
+

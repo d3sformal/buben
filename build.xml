@@ -1,0 +1,474 @@
+<project name="buben" default="build" basedir=".">
+
+	<!-- SETTINGS -->
+
+	<!-- typical value of the java.home property is JDK_DIR/jre -->
+	<property name="jdk.home" value="${java.home}/.."/>
+
+	<property name="src.impl.dir" value="./src"/>
+	<property name="src.examples.dir" value="./examples"/>
+	
+	<property name="build.dir" value="./build"/>
+	<property name="build.impl.dir" value="./build/impl"/>
+	<property name="build.examples.dir" value="./build/examples"/>
+	
+	<property name="externals.dir" value="./externals"/>
+	
+	<property name="wala.dir" value="${externals.dir}/wala"/>
+	
+	<property name="jpf.dir" value="${externals.dir}/jpf-core"/>
+
+	<property name="examples.dir" value="./examples"/>
+
+	<property name="config.wala.dir" value="./config/wala"/>
+	
+	<property name="config.jpf.dir" value="./config/jpf"/>
+
+	<property name="output.dir" value="./output"/>
+
+	<!-- attribute "location" is needed to get an absolute path -->
+	<property name="benchmarks.dir" location="./benchmarks"/>
+
+	
+	<!-- workaround for stupid behavior of Ant 1.8 --> 
+	<presetdef name="javac">
+		<javac includeantruntime="false" />
+	</presetdef>
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+			<pathelement location="${externals.dir}/ant-contrib-1.0b3.jar"/>
+		</classpath>
+	</taskdef>
+
+
+	<path id="classpath.base">
+		<pathelement location="${wala.dir}/com.ibm.wala.core.jar"/>
+		<pathelement location="${wala.dir}/com.ibm.wala.util.jar"/>
+		<pathelement location="${wala.dir}/com.ibm.wala.shrike.jar"/>
+		<pathelement location="${wala.dir}/dat"/>
+		<pathelement location="${jdk.home}/lib/tools.jar"/>
+		<pathelement location="${externals.dir}/asm-debug-all-5.2.jar"/>
+		<pathelement location="${jpf.dir}/build/jpf.jar"/>
+	</path>
+
+	<path id="classpath.build">
+		<path refid="classpath.base"/>
+	</path>
+	
+	<path id="classpath.run">
+		<path refid="classpath.base"/>
+		<pathelement location="${build.impl.dir}"/>
+	</path>
+
+	<path id="classpath.run.examples">
+		<path refid="classpath.run"/>
+		<pathelement location="${build.examples.dir}"/>
+	</path>
+	
+	<path id="classpath.run.jpf">
+		<path refid="classpath.run"/>
+		<pathelement location="${jpf.dir}/build/jpf-annotations.jar"/>
+	</path>
+
+
+	<!-- BUILDING -->
+	
+	<target name="init" depends="clean">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${build.impl.dir}" />
+		<mkdir dir="${build.examples.dir}" />
+		<mkdir dir="${output.dir}" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<target name="compile.impl" depends="init">
+		<javac srcdir="${src.impl.dir}" destdir="${build.impl.dir}" deprecation="on" debug="on">
+			<classpath refid="classpath.build"/>
+		</javac>
+	</target>
+
+	<target name="compile.examples" depends="init">
+		<javac srcdir="${src.examples.dir}" destdir="${build.examples.dir}" deprecation="on" debug="on">
+			<classpath refid="classpath.build"/>
+		</javac>
+	</target>
+	
+	<target name="build" depends="compile.impl,compile.examples"/>
+
+
+	<!-- SMALL EXAMPLES -->
+
+	<target name="run.examples" depends="build">
+		<for list="list1.ListClient1,list2.ListClient2,dbase.Client" param="exmainclass">
+		<sequential>
+			<propertyregex property="exname" input="@{exmainclass}" regexp="^([^\.]*)\..*" select="\1"/>
+			<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/${exname}.out">
+				<arg value="${examples.dir}/${exname}.cfg"/>
+				<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+				<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+				<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+				<jvmarg value="-Xmx2g"/>
+				<jvmarg value="-Xss32m"/>
+				<sysproperty key="WALA_HOME" value="."/>
+				<classpath refid="classpath.run.examples"/>
+			</java>
+			<java classname="cz.cuni.mff.d3s.buben.examples.@{exmainclass}" fork="true" output="${output.dir}/${exname}.out" append="true">
+				<jvmarg value="-Xmx2g"/>
+				<jvmarg value="-Xss32m"/>
+				<classpath refid="classpath.run.examples"/>
+			</java>
+			<var name="exname" unset="true"/>
+		</sequential>
+		</for>
+	</target>
+
+	<!-- LARGE BENCHMARKS -->
+
+	<target name="run.benchmarks.transform" depends="build">
+		<!-- dacapo/batik -->
+		<delete dir="${benchmarks.dir}/batik/classes"/>
+		<mkdir dir="${benchmarks.dir}/batik/classes"/>
+		<mkdir dir="${benchmarks.dir}/batik/profile-jpf"/>
+		<unjar dest="${benchmarks.dir}/batik/classes">
+			<fileset dir="${benchmarks.dir}/batik">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/batik.out">
+			<arg value="${benchmarks.dir}/batik.cfg"/>
+			<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+			<arg value="${benchmarks.dir}/batik/profile-jpf"/>
+			<jvmarg value="-Xmx20g"/>
+			<jvmarg value="-Xss32m"/>
+			<sysproperty key="WALA_HOME" value="."/>
+			<classpath>
+				<path refid="classpath.run"/>
+				<pathelement location="${benchmarks.dir}/batik/classes"/>
+			</classpath>
+		</java>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/batik.out" append="true">
+			<jvmarg value="-Xmx20g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/batik/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="+jpf-core.native_classpath+=;${benchmarks.dir}/batik/profile-jpf"/>
+			<arg value="${config.jpf.dir}/batik.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/batik/classes"/>
+			</classpath>
+		</java>
+		<!-- dacapo/lusearch -->
+		<delete dir="${benchmarks.dir}/lusearch/classes"/>
+		<mkdir dir="${benchmarks.dir}/lusearch/classes"/>
+		<mkdir dir="${benchmarks.dir}/lusearch/profile-jpf"/>
+		<unjar dest="${benchmarks.dir}/lusearch/classes">
+			<fileset dir="${benchmarks.dir}/lusearch">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<javac srcdir="${benchmarks.dir}/lusearch/src" destdir="${benchmarks.dir}/lusearch/classes" deprecation="on" debug="on">
+			<classpath>
+				<path refid="classpath.build"/>
+				<pathelement location="${benchmarks.dir}/lusearch/classes"/>
+			</classpath>
+		</javac>
+		<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/lusearch.out">
+			<arg value="${benchmarks.dir}/lusearch.cfg"/>
+			<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+			<arg value="${benchmarks.dir}/lusearch/profile-jpf"/>
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<sysproperty key="WALA_HOME" value="."/>
+			<classpath>
+				<path refid="classpath.run"/>
+				<pathelement location="${benchmarks.dir}/lusearch/classes"/>
+			</classpath>
+		</java>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/lusearch.out" append="true">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/lusearch/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="+jpf-core.native_classpath+=;${benchmarks.dir}/lusearch/profile-jpf"/>
+			<arg value="${config.jpf.dir}/lusearch.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/lusearch/classes"/>
+			</classpath>
+		</java>
+		<!-- dacapo/pmd -->
+		<delete dir="${benchmarks.dir}/pmd/classes"/>
+		<mkdir dir="${benchmarks.dir}/pmd/classes"/>
+		<mkdir dir="${benchmarks.dir}/pmd/profile-jpf"/>
+		<unjar dest="${benchmarks.dir}/pmd/classes">
+			<fileset dir="${benchmarks.dir}/pmd">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/pmd.out">
+			<arg value="${benchmarks.dir}/pmd.cfg"/>
+			<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+			<arg value="${benchmarks.dir}/pmd/profile-jpf"/>
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<sysproperty key="WALA_HOME" value="."/>
+			<classpath>
+				<path refid="classpath.run"/>
+				<pathelement location="${benchmarks.dir}/pmd/classes"/>
+			</classpath>
+		</java>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/pmd.out" append="true">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/pmd/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="+jpf-core.native_classpath+=;${benchmarks.dir}/pmd/profile-jpf"/>
+			<arg value="${config.jpf.dir}/pmd.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/pmd/classes"/>
+			</classpath>
+		</java>
+		<!-- dacapo/sunflow -->
+		<delete dir="${benchmarks.dir}/sunflow/classes"/>
+		<mkdir dir="${benchmarks.dir}/sunflow/classes"/>
+		<mkdir dir="${benchmarks.dir}/sunflow/profile-jpf"/>
+		<unjar dest="${benchmarks.dir}/sunflow/classes">
+			<fileset dir="${benchmarks.dir}/sunflow">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/sunflow.out">
+			<arg value="${benchmarks.dir}/sunflow.cfg"/>
+			<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+			<arg value="${benchmarks.dir}/sunflow/profile-jpf"/>
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<sysproperty key="WALA_HOME" value="."/>
+			<classpath>
+				<path refid="classpath.run"/>
+				<pathelement location="${benchmarks.dir}/sunflow/classes"/>
+			</classpath>
+		</java>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/sunflow.out" append="true">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/sunflow/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="+jpf-core.native_classpath+=;${benchmarks.dir}/sunflow/profile-jpf"/>
+			<arg value="${config.jpf.dir}/sunflow.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/sunflow/classes"/>
+			</classpath>
+		</java>
+		<!-- specjbb -->
+		<delete dir="${benchmarks.dir}/specjbb/classes"/>
+		<mkdir dir="${benchmarks.dir}/specjbb/classes"/>
+		<mkdir dir="${benchmarks.dir}/specjbb/profile-jpf"/>
+		<unjar dest="${benchmarks.dir}/specjbb/classes">
+			<fileset dir="${benchmarks.dir}/specjbb">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/specjbb.out">
+			<arg value="${benchmarks.dir}/specjbb.cfg"/>
+			<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+			<arg value="${benchmarks.dir}/specjbb/profile-jpf"/>
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<sysproperty key="WALA_HOME" value="."/>
+			<classpath>
+				<path refid="classpath.run"/>
+				<pathelement location="${benchmarks.dir}/specjbb/classes"/>
+			</classpath>
+		</java>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/specjbb.out" append="true">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/specjbb/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="+jpf-core.native_classpath+=;${benchmarks.dir}/specjbb/profile-jpf"/>
+			<arg value="${config.jpf.dir}/specjbb.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/specjbb/classes"/>
+			</classpath>
+		</java>
+		<!-- pjbench/jspider -->
+		<delete dir="${benchmarks.dir}/jspider/classes"/>
+		<mkdir dir="${benchmarks.dir}/jspider/classes"/>
+		<mkdir dir="${benchmarks.dir}/jspider/profile-jpf"/>
+		<unjar dest="${benchmarks.dir}/jspider/classes">
+			<fileset dir="${benchmarks.dir}/jspider">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java classname="cz.cuni.mff.d3s.buben.Main" fork="true" output="${output.dir}/jspider.out">
+			<arg value="${benchmarks.dir}/jspider.cfg"/>
+			<arg value="${config.jpf.dir}/natives-jpfvmreq.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfonly.txt"/>
+			<arg value="${config.jpf.dir}/natives-jpfnotsupp.txt"/>
+			<arg value="${benchmarks.dir}/jspider/profile-jpf"/>
+			<jvmarg value="-Xmx20g"/>
+			<jvmarg value="-Xss32m"/>
+			<sysproperty key="WALA_HOME" value="."/>
+			<classpath>
+				<path refid="classpath.run"/>
+				<pathelement location="${benchmarks.dir}/jspider/classes"/>
+			</classpath>
+		</java>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/jspider.out" append="true">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/jspider/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="+jpf-core.native_classpath+=;${benchmarks.dir}/jspider/profile-jpf"/>
+			<arg value="${config.jpf.dir}/jspider.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/jspider/classes"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="run.benchmarks.original" depends="build">
+		<!-- dacapo/batik -->
+		<delete dir="${benchmarks.dir}/batik/classes"/>
+		<mkdir dir="${benchmarks.dir}/batik/classes"/>
+		<unjar dest="${benchmarks.dir}/batik/classes">
+			<fileset dir="${benchmarks.dir}/batik">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/batik.out">
+			<jvmarg value="-Xmx20g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/batik/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="${config.jpf.dir}/batik.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/batik/classes"/>
+			</classpath>
+		</java>
+		<!-- dacapo/lusearch -->
+		<delete dir="${benchmarks.dir}/lusearch/classes"/>
+		<mkdir dir="${benchmarks.dir}/lusearch/classes"/>
+		<unjar dest="${benchmarks.dir}/lusearch/classes">
+			<fileset dir="${benchmarks.dir}/lusearch">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<javac srcdir="${benchmarks.dir}/lusearch/src" destdir="${benchmarks.dir}/lusearch/classes" deprecation="on" debug="on">
+			<classpath>
+				<path refid="classpath.build"/>
+				<pathelement location="${benchmarks.dir}/lusearch/classes"/>
+			</classpath>
+		</javac>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/lusearch.out">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/lusearch/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="${config.jpf.dir}/lusearch.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/lusearch/classes"/>
+			</classpath>
+		</java>
+		<!-- dacapo/pmd -->
+		<delete dir="${benchmarks.dir}/pmd/classes"/>
+		<mkdir dir="${benchmarks.dir}/pmd/classes"/>
+		<unjar dest="${benchmarks.dir}/pmd/classes">
+			<fileset dir="${benchmarks.dir}/pmd">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/pmd.out">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/pmd/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="${config.jpf.dir}/pmd.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/pmd/classes"/>
+			</classpath>
+		</java>
+		<!-- dacapo/sunflow -->
+		<delete dir="${benchmarks.dir}/sunflow/classes"/>
+		<mkdir dir="${benchmarks.dir}/sunflow/classes"/>
+		<unjar dest="${benchmarks.dir}/sunflow/classes">
+			<fileset dir="${benchmarks.dir}/sunflow">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/sunflow.out">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/sunflow/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="${config.jpf.dir}/sunflow.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/sunflow/classes"/>
+			</classpath>
+		</java>
+		<!-- specjbb -->
+		<delete dir="${benchmarks.dir}/specjbb/classes"/>
+		<mkdir dir="${benchmarks.dir}/specjbb/classes"/>
+		<unjar dest="${benchmarks.dir}/specjbb/classes">
+			<fileset dir="${benchmarks.dir}/specjbb">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/specjbb.out">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/specjbb/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="${config.jpf.dir}/specjbb.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/specjbb/classes"/>
+			</classpath>
+		</java>
+		<!-- pjbench/jspider -->
+		<delete dir="${benchmarks.dir}/jspider/classes"/>
+		<mkdir dir="${benchmarks.dir}/jspider/classes"/>
+		<unjar dest="${benchmarks.dir}/jspider/classes">
+			<fileset dir="${benchmarks.dir}/jspider">
+				<include name="*.jar"/>
+			</fileset>
+		</unjar>
+		<java jar="${jpf.dir}/build/RunJPF.jar" fork="true" output="${output.dir}/jspider.out">
+			<jvmarg value="-Xmx12g"/>
+			<jvmarg value="-Xss32m"/>
+			<arg value="+classpath=.,${benchmarks.dir}/jspider/classes"/>
+			<arg value="+site=./site.properties"/>
+			<arg value="${config.jpf.dir}/jspider.jpf"/>
+			<classpath>
+				<path refid="classpath.run.jpf"/>
+				<pathelement location="${benchmarks.dir}/jspider/classes"/>
+			</classpath>
+		</java>
+	</target>
+
+</project>
+

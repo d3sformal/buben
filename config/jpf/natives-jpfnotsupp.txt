@@ -1,0 +1,10 @@
+java.net.InetAddress.init()void
+java.awt.image.ColorModel.initIDs()void
+java.lang.StrictMath.IEEEremainder(double,double)double
+sun.net.www.protocol.file.FileURLConnection.$init(java.net.URL,java.io.File)void
+java.net.InetAddressImplFactory.isIPv6Supported()boolean
+java.awt.image.BufferedImage.initIDs()void
+java.net.Inet4Address.init()void
+java.awt.image.IndexColorModel.initIDs()void
+java.net.Inet4AddressImpl.lookupAllHostAddr(java.lang.String)java.net.InetAddress[]
+java.net.InetAddress.getByName(java.lang.String)java.net.InetAddress

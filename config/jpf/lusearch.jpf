@@ -1,0 +1,8 @@
+target=org.dacapo.lusearch.Search
+target.args=-index,benchmarks/lusearch/dat/index-default,-queries,benchmarks/lusearch/dat/query,-output,output/lusearch.out,-totalqueries,2,-threads,2
+
+jpf-core.peer_packages+=,cz.cuni.mff.d3s.buben.jpf.vm
+
+listener=gov.nasa.jpf.listener.PreciseRaceDetector
+race.exclude=gov.nasa.jpf.*
+

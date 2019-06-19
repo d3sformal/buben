@@ -1,0 +1,7 @@
+notes.txt
+future.txt
+benchmarks/specjbb/jbb.jar
+benchmarks/specjbb/dat/SPECjbb_config.props
+benchmarks/specjbb/dat/xml/jbb-document.dtd
+benchmarks/specjbb/dat/xml/template-document.xml
+
