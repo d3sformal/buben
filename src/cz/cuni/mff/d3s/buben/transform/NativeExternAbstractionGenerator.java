@@ -76,10 +76,11 @@ public class NativeExternAbstractionGenerator
 			
 			String clsName = WALAUtils.getClassName(cls);
 			
-			// skip classes that belong to Java standard library
+			// skip classes that belong to Java standard library and internal classes (e.g., from the package sun.*)
 				// we can safely ignore all side effects that are internal to such library classes (and their bytecode cannot be updated anyway)
 				// this also ensures that we keep only writes to fields and arrays defined in classes that belong to custom libraries
 			if (Utils.isJavaStandardLibraryClass(clsName)) continue;
+			if (Utils.isJavaInternalLibraryClass(clsName)) continue;
 
 			// skip model classes from the package "com.ibm.wala"
 			if (WALAUtils.isSyntheticModelClass(clsName)) continue;

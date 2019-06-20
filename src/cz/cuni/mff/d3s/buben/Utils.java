@@ -267,6 +267,13 @@ public class Utils
 
 		return false;
 	}
+	
+	public static boolean isJavaInternalLibraryClass(String clsName)
+	{
+		if (clsName.startsWith("sun.")) return true;
+
+		return false;
+	}
 
 	public static boolean isInnerClassName(String clsName)
 	{

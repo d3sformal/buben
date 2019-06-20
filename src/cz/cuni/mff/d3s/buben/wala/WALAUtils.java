@@ -92,6 +92,7 @@ public class WALAUtils
 			
 		AnalysisOptions options = new AnalysisOptions(scope, entryPoints);
 		options.setHandleStaticInit(true);
+		options.setReflectionOptions(AnalysisOptions.ReflectionOptions.NONE);
 		
 		AnalysisCache cache = new AnalysisCache();			
 
